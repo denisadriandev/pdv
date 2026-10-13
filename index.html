@@ -102,23 +102,26 @@
   .stat.change { background: rgba(255,255,255,.18); border-radius: 12px; padding: 6px 10px; }
   .stat.change .val { font-size: clamp(22px, 6.5vw, 32px); }
   .stat.change.missing { background: var(--yellow); color: var(--ink); }
-  .sum-actions { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
-  .sum-actions button { border-radius: 12px; border: none; font-weight: 700; font-size: 15px; height: 50px; padding: 0 14px; }
-  .paid { background: #fff; color: var(--ink); text-align: left; display: flex; flex-direction: column; justify-content: center; padding: 0 12px !important; min-width: 0; }
+  .sum-actions { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; }
+  .sum-actions button { border-radius: 12px; border: none; font-weight: 700; font-size: 14px; height: 50px; padding: 0 8px; }
+  .paid { background: #fff; color: var(--ink); text-align: left; display: flex; flex-direction: column; justify-content: center; padding: 0 10px !important; min-width: 0; }
   .paid .lbl { font-size: 11px; font-weight: 600; color: var(--muted); line-height: 1.1; }
-  .paid .v { font-size: 18px; font-weight: 700; color: var(--magenta-d); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .paid .v { font-size: 17px; font-weight: 700; color: var(--magenta-d); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ghost { background: transparent; color: #fff; box-shadow: inset 0 0 0 2px rgba(255,255,255,.75); }
   .go { background: var(--yellow); color: var(--ink); }
   .go:disabled { opacity: .5; }
   .sum-actions button:active { transform: scale(.97); }
 
-  .fc { height: 40px; border-radius: 12px; border: none; background: var(--blue); color: var(--ink); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .fc svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
-  .fc:active { transform: scale(.98); }
+  .sum-actions button.fc { background: var(--blue); color: var(--ink); width: 46px; padding: 0 !important; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 10px; font-weight: 700; line-height: 1; }
+  .fc svg { width: 22px; height: 22px; stroke: var(--ink); fill: none; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
   .fc-info { font-size: 14px; color: var(--muted); line-height: 1.4; margin: 0 0 10px; }
   .fc-info b { color: var(--ink); }
-  .fc-bases { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
-  .fc-bases button { height: 42px; padding: 0 14px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font-weight: 700; font-size: 15px; color: var(--ink); }
+  .fc-recv { display: block; width: 100%; text-align: left; height: 56px; border-radius: 12px; border: 2px solid var(--line); background: #fff; padding: 0 14px; margin: 0 0 8px; display: flex; flex-direction: column; justify-content: center; }
+  .fc-recv .lbl { font-size: 11px; font-weight: 600; color: var(--muted); line-height: 1.1; }
+  .fc-recv .v { font-size: 20px; font-weight: 700; color: var(--magenta-d); line-height: 1.2; }
+  .fc-bases { display: flex; gap: 6px; margin: 0 0 12px; }
+  .fc-bases button { flex: 1; height: 42px; padding: 0 4px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font-weight: 700; font-size: 15px; color: var(--ink); }
+  .fc-bases button.exact { background: var(--yellow); border-color: var(--yellow); }
   .fc-bases button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
   .fc-list { display: grid; gap: 8px; }
   .fc-card { width: 100%; text-align: left; background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; display: grid; gap: 6px; }
@@ -185,8 +188,10 @@
     .stat .val { font-size: clamp(34px, 5vw, 56px); }
     .stat.change { padding: 10px 14px; }
     .stat.change .val { font-size: clamp(28px, 4vw, 44px); }
-    .sum-actions { grid-template-columns: 1fr 1fr; }
-    .paid { grid-column: 1 / -1; height: 64px !important; }
+    .sum-actions { grid-template-columns: 1fr 1fr 64px; gap: 8px; }
+    .paid { grid-column: 1 / 3; height: 64px !important; }
+    .sum-actions button.fc { grid-column: 3; grid-row: 1; width: auto; height: 64px; font-size: 11px; }
+    .ghost { grid-column: 1 / 2; } .go { grid-column: 2 / 4; }
     .paid .v { font-size: 24px; }
     .sum-actions button { height: 56px; font-size: 16px; }
     .ghost, .go { grid-column: auto; }
@@ -202,6 +207,7 @@
     .paid { height: 46px !important; }
     .paid .v { font-size: 18px; }
     .sum-actions button { height: 44px; font-size: 15px; }
+    .sum-actions button.fc { height: 46px; }
   }
 
   /* ===== botões gerais ===== */
@@ -343,9 +349,9 @@
           <div class="stat"><span class="lbl">Total</span><span class="val" id="total">R$ 0,00</span></div>
           <div class="stat change" id="changeStat" aria-live="polite"><span class="lbl" id="changeLbl">Troco</span><span class="val" id="change">R$ 0,00</span></div>
         </div>
-        <button class="fc" id="fcBtn" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.6 2.5-1.6s2.5.7 2.5 1.7c0 2.3-5 1.2-5 3.7 0 1 1 1.7 2.5 1.7s2.5-.7 2.5-1.7"/></svg>Facilitador de troco</button>
         <div class="sum-actions">
-          <button class="paid" id="paidBtn" aria-label="Informar valor da nota"><span class="lbl">Valor da nota</span><span class="v" id="paidVal">Toque aqui</span></button>
+          <button class="paid" id="paidBtn" aria-label="Informar valor da nota"><span class="lbl">Valor da nota</span><span class="v" id="paidVal">Informar</span></button>
+          <button class="fc" id="fcBtn" type="button" aria-label="Facilitador de troco" title="Facilitador de troco"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.6 9.6c0-.9.9-1.5 2.4-1.5s2.4.6 2.4 1.5c0 2.1-4.8 1.1-4.8 3.3 0 .9.9 1.5 2.4 1.5s2.4-.6 2.4-1.5"/></svg><span>Facilitar</span></button>
           <button class="ghost" id="clearBtn">Limpar</button>
           <button class="go" id="finishBtn" disabled>Finalizar</button>
         </div>
@@ -717,7 +723,7 @@ function updateTotals() {
   } else {
     stat.classList.remove('missing'); $('#changeLbl').textContent = 'Troco'; $('#change').textContent = brl(pc == null ? 0 : (pc - t) / 100);
   }
-  $('#paidVal').textContent = paid == null ? 'Toque aqui' : brl(paid);
+  $('#paidVal').textContent = paid == null ? 'Informar' : brl(paid);
   $('#finishBtn').disabled = t <= 0 || saving;
 }
 
@@ -732,70 +738,81 @@ $('#paidBtn').addEventListener('click', async () => {
 /* ============ Facilitador de troco ============ */
 const NOTE_C = [20000, 10000, 5000, 2000, 1000, 500, 200];
 const DENOMS = [...NOTE_C, 100, 50, 25, 10, 5, 1];
-const EXTRA_C = [5000, 2000, 1000, 500, 200, 100, 50, 25, 10, 5];
+const EXTRA_WHOLE = [5000, 2000, 1000, 500, 200, 100];
+const EXTRA_COINS = [50, 25, 10, 5];
 const breakdown = c => { const o = []; for (const d of DENOMS) { const n = Math.floor(c / d); if (n) { o.push([d, n]); c -= n * d; } } return o; };
 const npieces = b => b.reduce((s, [, n]) => s + n, 0);
 const kind = (d, n) => d >= 200 ? (n > 1 ? 'notas' : 'nota') : (n > 1 ? 'moedas' : 'moeda');
 const denTxt = d => `${d >= 200 ? 'nota' : 'moeda'} de ${brl(d / 100)}`;
 const breakTxt = b => b.length ? b.map(([d, n]) => `${n} ${kind(d, n)} de ${brl(d / 100)}`).join(' + ') : 'sem troco';
 
-function extraCombos() {   // até 2 peças que o cliente pode somar à nota
+/* O que o cliente pode somar à nota: até 2 peças. Moedas de centavos só se a conta tiver centavos. */
+function extraCombos(T) {
+  const set = T % 100 === 0 ? EXTRA_WHOLE : [...EXTRA_WHOLE, ...EXTRA_COINS];
   const m = new Map();
-  for (const a of EXTRA_C) { if (!m.has(a) || m.get(a).length > 1) m.set(a, [a]); }
-  for (let i = 0; i < EXTRA_C.length; i++) for (let j = i; j < EXTRA_C.length; j++) {
-    const e = EXTRA_C[i] + EXTRA_C[j];
-    if (!m.has(e)) m.set(e, [EXTRA_C[i], EXTRA_C[j]]);
+  for (const a of set) m.set(a, [a]);
+  for (let i = 0; i < set.length; i++) for (let j = i; j < set.length; j++) {
+    const e = set[i] + set[j];
+    if (!m.has(e)) m.set(e, [set[i], set[j]]);
   }
   return m;
 }
 function changeTips(T, B) {
-  const c0 = B - T, b0 = breakdown(c0), p0 = npieces(b0), out = [];
-  for (const [e, parts] of extraCombos()) {
+  const c0 = B - T, b0 = breakdown(c0), p0 = npieces(b0);
+  let out = [];
+  for (const [e, parts] of extraCombos(T)) {
+    if (e >= T) continue;                       // pagar o valor exato só com a parte extra e devolver a nota: sem sentido
     const P = B + e, c = P - T, b = breakdown(c), p = npieces(b);
     if (p < p0) out.push({ e, parts, P, c, b, saved: p0 - p });
   }
+  // descarta opção que só acrescenta peças a outra sem economizar mais troco
+  out = out.filter(x => !out.some(y => y !== x && y.saved >= x.saved && y.parts.length < x.parts.length && y.parts.every(d => x.parts.includes(d))));
   out.sort((x, y) => y.saved - x.saved || x.parts.length - y.parts.length || x.e - y.e);
   return { c0, b0, p0, tips: out.slice(0, 5) };
 }
-function baseOptions(T) {
-  let arr = [];
-  if (paid != null && cents(paid) >= T) arr.push(cents(paid));
-  if (T <= 20000) { for (const n of [...NOTE_C].reverse()) if (n >= T) arr.push(n); }
-  else { const s = Math.ceil(T / 10000) * 10000; arr.push(s, s + 10000, s + 20000); }
-  arr = [...new Set(arr)].sort((a, b) => a - b);
-  const first = paid != null && cents(paid) >= T ? cents(paid) : null;
-  const rest = arr.filter(v => v !== first).slice(0, first == null ? 3 : 2);
-  return { list: first == null ? rest : [first, ...rest].sort((a, b) => a - b), def: first != null ? first : rest[0] };
-}
+function setPaid(v) { paid = v; updateTotals(); saveCart(); }
 
 $('#fcBtn').addEventListener('click', () => {
   const T = totalC();
   if (T <= 0) return toast('Adicione produtos ao pedido', 'err');
-  const { list, def } = baseOptions(T);
-  let B = def;
   const m = openModal(`<div class="sheet" role="dialog" aria-label="Facilitador de troco">
-    <h2>Facilitador de troco</h2><div id="fcBody"></div>
+    <h2>Facilitador de troco</h2>
+    <p class="fc-info">Total <b>${brl(T / 100)}</b></p>
+    <button type="button" class="fc-recv" id="fcRecv"><span class="lbl">Valor recebido (valor da nota)</span><span class="v" id="fcRecvV"></span></button>
+    <div class="fc-bases" id="fcChips">${[20, 50, 100, 200].map(v => `<button type="button" data-v="${v}">${v}</button>`).join('')}<button type="button" class="exact" data-v="${T / 100}">Exato</button></div>
+    <div id="fcBody"></div>
     <div class="actions"><button class="solid" data-a="x">Fechar</button></div></div>`);
   const body = m.sheet.querySelector('#fcBody');
+  let tips = [];
   function render() {
-    const r = changeTips(T, B);
-    let h = `<p class="fc-info">Total <b>${brl(T / 100)}</b>. Se o cliente der <b>${brl(B / 100)}</b>, o troco é <b>${brl(r.c0 / 100)}</b>${r.c0 ? ` (${breakTxt(r.b0)})` : ''}.</p>
-      <div class="fc-bases">${list.map(v => `<button type="button" data-base="${v}" class="${v === B ? 'on' : ''}">Nota ${brl(v / 100)}</button>`).join('')}</div>`;
+    const P = paid == null ? null : cents(paid);
+    m.sheet.querySelector('#fcRecvV').textContent = P == null ? 'Informar' : brl(paid);
+    m.sheet.querySelectorAll('#fcChips button').forEach(b => b.classList.toggle('on', P != null && cents(Number(b.dataset.v)) === P));
+    tips = [];
+    if (P == null) { body.innerHTML = `<div class="fc-empty">Informe o valor recebido para ver as opções.</div>`; return; }
+    if (P < T) { body.innerHTML = `<div class="fc-empty">O valor recebido é menor que o total (faltam ${brl((T - P) / 100)}).</div>`; return; }
+    const r = changeTips(T, P);
+    tips = r.tips;
+    let h = `<p class="fc-info">Com <b>${brl(P / 100)}</b> o troco é <b>${brl(r.c0 / 100)}</b>${r.c0 ? ` (${breakTxt(r.b0)})` : ''}.</p>`;
     if (r.c0 === 0) h += `<div class="fc-empty">Valor exato: não precisa de troco.</div>`;
-    else if (!r.tips.length) h += `<div class="fc-empty">O troco já está simples (${breakTxt(r.b0)}). Não há como melhorar com notas ou moedas pequenas.</div>`;
-    else h += `<div class="fc-list">${r.tips.map((t, i) => `<button type="button" class="fc-card" data-i="${i}">
-        <div class="fc-pay"><span class="lbl">Peça a mais ao cliente</span><span class="chip-b">${brl(B / 100)}</span>${t.parts.map(d => `<span class="chip-x"><small>${denTxt(d)}</small>+ ${brl(d / 100)}</span>`).join('')}</div>
+    else if (!tips.length) h += `<div class="fc-empty">Nenhuma opção melhora esse troco.</div>`;
+    else h += `<div class="fc-list">${tips.map((t, i) => `<button type="button" class="fc-card" data-i="${i}">
+        <div class="fc-pay"><span class="lbl">Peça a mais ao cliente</span><span class="chip-b">${brl(P / 100)}</span>${t.parts.map(d => `<span class="chip-x"><small>${denTxt(d)}</small>+ ${brl(d / 100)}</span>`).join('')}</div>
         <div class="fc-res"><span>Cliente paga <b>${brl(t.P / 100)}</b><br><span class="d">Troco: ${breakTxt(t.b)}</span></span><span class="t">${brl(t.c / 100)}<br><span class="fc-save">${t.saved} ${t.saved > 1 ? 'peças' : 'peça'} a menos</span></span></div>
       </button>`).join('')}</div>
       <p class="fc-info" style="margin-top:10px">Toque em uma opção para usá-la como valor da nota.</p>`;
     body.innerHTML = h;
-    body._tips = r.tips;
   }
   render();
-  m.sheet.addEventListener('click', e => {
-    const b = e.target.closest('[data-base]'); if (b) { B = Number(b.dataset.base); return render(); }
+  m.sheet.addEventListener('click', async e => {
+    const ch = e.target.closest('#fcChips [data-v]'); if (ch) { setPaid(Number(ch.dataset.v)); return render(); }
+    if (e.target.closest('#fcRecv')) {
+      const v = await keypad({ title: 'Valor da nota', mode: 'money', initial: numToBuf(paid), chips: [20, 50, 100, 200], exact: T / 100, allowEmpty: true });
+      if (v != null) setPaid(bufToNum(v));
+      return render();
+    }
     const c = e.target.closest('.fc-card');
-    if (c) { const t = body._tips[Number(c.dataset.i)]; paid = t.P / 100; updateTotals(); saveCart(); return m.close(); }
+    if (c) { setPaid(tips[Number(c.dataset.i)].P / 100); return m.close(); }
     if (e.target.closest('[data-a]')) m.close();
   });
 });
