@@ -227,6 +227,16 @@
   .card { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
   .card.drag { position: relative; z-index: 6; border-color: var(--magenta); background: #FFEAF5; box-shadow: 0 10px 28px rgba(58,22,49,.28); transform: scale(1.02); cursor: grabbing; }
   .hint { margin: 10px 2px 0; font-size: 13px; color: var(--muted); }
+  .card .n small { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .card { cursor: pointer; }
+  .card.off { background: var(--offwhite); }
+  .card.off .n, .card.off .p { opacity: .55; }
+  .sw { width: 50px; height: 30px; border-radius: 15px; border: none; background: #CDBFC8; position: relative; flex: none; padding: 0; transition: background .15s; }
+  .sw i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+  .sw.on { background: #1E7B4F; }
+  .sw.on i { transform: translateX(20px); }
+  .actrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 10px 14px; border: 2px solid var(--line); border-radius: 12px; }
+  .actrow small { display: block; font-size: 12px; color: var(--muted); font-weight: 500; }
   .card .n { flex: 1; min-width: 0; font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .card .p { font-weight: 700; color: var(--magenta-d); font-size: 16px; white-space: nowrap; }
   .card svg { width: 18px; height: 18px; stroke: var(--muted); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
@@ -657,34 +667,36 @@ function loadCart() {
     if (c) { qty = c.qty || {}; paid = c.paid == null ? null : Number(c.paid); }
   } catch (e) {}
 }
+const normP = p => ({ ...p, name: up(p.name), active: p.active !== false });
+const activeProducts = () => products.filter(p => p.active);
 function pruneCart() {
-  const ids = new Set(products.map(p => p.id));
+  const ids = new Set(activeProducts().map(p => p.id));
   for (const k of Object.keys(qty)) if (!ids.has(k) || !(qty[k] > 0)) delete qty[k];
 }
 
 async function loadProducts() {
   const r = await api('pdv_products_list');
-  products = (r.products || []).map(p => ({ ...p, name: up(p.name) }));
+  products = (r.products || []).map(normP);
   pruneCart();
 }
 
 /* ============ PDV ============ */
 const plist = $('#plist');
 const mqWide = window.matchMedia('(min-width: 1000px) and (min-height: 560px)');
-const onMq = () => { if (products.length > 10) renderPdv(); };
+const onMq = () => { if (activeProducts().length > 10) renderPdv(); };
 if (mqWide.addEventListener) mqWide.addEventListener('change', onMq); else mqWide.addListener(onMq);
 
 function renderPdv() {
-  const n = products.length;
+  const list = activeProducts(), n = list.length;
   if (!n) {
     plist.className = 'products'; plist.style.removeProperty('--n');
-    plist.innerHTML = `<div class="empty">Nenhum produto cadastrado.<br><button class="solid" data-go="produtos">Cadastrar produtos</button></div>`;
+    plist.innerHTML = `<div class="empty">${products.length ? 'Nenhum produto ativo.' : 'Nenhum produto cadastrado.'}<br><button class="solid" data-go="produtos">${products.length ? 'Ativar produtos' : 'Cadastrar produtos'}</button></div>`;
   } else {
     const two = mqWide.matches && n > 10;   // 2 colunas em tela grande
     plist.className = 'products' + (two ? ' cols2' : '') + ((two ? n > 30 : n > 10) ? ' many' : '');
     plist.style.setProperty('--n', Math.min(n, 10));
     plist.style.setProperty('--r', Math.ceil(n / 2));
-    plist.innerHTML = products.map(p => {
+    plist.innerHTML = list.map(p => {
       const q = qty[p.id] || 0;
       return `<div class="row${q ? ' on' : ''}" data-id="${p.id}">
         <button class="rb minus" aria-label="Tirar 1 de ${esc(p.name)}"${q ? '' : ' disabled'}>−</button>
@@ -710,7 +722,7 @@ plist.addEventListener('click', e => {
   updateTotals(); saveCart();
 });
 
-function totalC() { return products.reduce((s, p) => s + (qty[p.id] || 0) * cents(p.price), 0); }
+function totalC() { return activeProducts().reduce((s, p) => s + (qty[p.id] || 0) * cents(p.price), 0); }
 
 function updateTotals() {
   const t = totalC();
@@ -847,14 +859,33 @@ $('#finishBtn').addEventListener('click', async () => {
 /* ============ Produtos (cadastro) ============ */
 function renderProdutos() {
   $('#prodList').innerHTML = products.length ? products.map(p => `
-    <button class="card" data-id="${p.id}"><span class="n">${esc(p.name)}</span><span class="p">${brl(p.price)}</span>
-      <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>`).join('')
+    <div class="card${p.active ? '' : ' off'}" data-id="${p.id}" role="button" tabindex="0"><span class="n">${esc(p.name)}${p.active ? '' : '<small>Inativo · fora do PDV</small>'}</span><span class="p">${brl(p.price)}</span>
+      <button type="button" class="sw${p.active ? ' on' : ''}" role="switch" aria-checked="${p.active}" aria-label="${p.active ? 'Desativar' : 'Ativar'} ${esc(p.name)}"><i></i></button></div>`).join('')
     : '<div class="empty">Nenhum produto ainda. Toque em “Novo produto”.</div>';
 }
-$('#prodList').addEventListener('click', e => {
+$('#prodList').addEventListener('click', async e => {
   const c = e.target.closest('.card'); if (!c) return;
-  editProduct(products.find(p => p.id === c.dataset.id));
+  const p = products.find(x => x.id === c.dataset.id); if (!p) return;
+  if (e.target.closest('.sw')) return toggleActive(p);
+  editProduct(p);
 });
+$('#prodList').addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('card')) { e.preventDefault(); e.target.click(); }
+});
+async function toggleActive(p) {
+  const v = !p.active;
+  p.active = v;
+  if (!v) { delete qty[p.id]; saveCart(); }
+  renderProdutos(); renderPdv();
+  try {
+    const r = await api('pdv_product_set_active', { p_id: p.id, p_active: v });
+    if (r.error) throw 0;
+    toast(v ? 'Produto ativado: aparece no PDV' : 'Produto inativo: fora do PDV', 'ok');
+  } catch (e) {
+    p.active = !v; renderProdutos(); renderPdv();
+    toast('Não foi possível alterar o produto', 'err');
+  }
+}
 $('#newProd').addEventListener('click', () => editProduct(null));
 
 /* ---- ordenar produtos: segurar e arrastar ---- */
@@ -868,7 +899,7 @@ $('#newProd').addEventListener('click', () => editProduct(null));
 
   list.addEventListener('pointerdown', e => {
     if (st || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    const c = e.target.closest('.card'); if (!c) return;
+    const c = e.target.closest('.card'); if (!c || e.target.closest('.sw')) return;
     st = { c, pid: e.pointerId, x: e.clientX, y: e.clientY, cy: e.clientY, drag: false, grab: 0, before: ids() };
     st.timer = setTimeout(start, HOLD);
   });
@@ -934,15 +965,21 @@ $('#newProd').addEventListener('click', () => editProduct(null));
 
 function editProduct(p) {
   let price = p ? p.price : null;
+  let active = p ? p.active : true;
   const m = openModal(`<div class="sheet" role="dialog" aria-label="Produto">
     <h2>${p ? 'Editar produto' : 'Novo produto'}</h2>
     <label class="f">Nome<input id="pn" maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" value="${p ? esc(up(p.name)) : ''}"></label>
     <label class="f">Preço<button type="button" class="fieldbtn" id="pp"></button></label>
+    <div class="actrow"><span><b>Ativo no PDV</b><small id="actHint"></small></span><button type="button" class="sw" id="actSw" role="switch" aria-label="Ativo no PDV"><i></i></button></div>
     <div class="actions">${p ? '<button class="danger" data-a="del">Excluir</button>' : ''}<button class="outline" data-a="cancel">Cancelar</button><button class="solid" data-a="save">Salvar</button></div>
   </div>`, { noFocus: !!p, top: true });
   const pp = m.sheet.querySelector('#pp'), pn = m.sheet.querySelector('#pn');
   const showPrice = () => { pp.textContent = price == null ? 'Toque para informar' : brl(price); };
   showPrice();
+  const actSw = m.sheet.querySelector('#actSw');
+  const showAct = () => { actSw.classList.toggle('on', active); actSw.setAttribute('aria-checked', active); m.sheet.querySelector('#actHint').textContent = active ? 'Aparece no PDV' : 'Não aparece no PDV'; };
+  showAct();
+  actSw.addEventListener('click', () => { active = !active; showAct(); });
   if (!p) setTimeout(() => pn.focus(), 60);
   pn.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
   pn.addEventListener('input', () => {   // força MAIÚSCULO mantendo a posição do cursor
@@ -961,9 +998,10 @@ function editProduct(p) {
     if (price == null || isNaN(price)) return toast('Informe o preço', 'err');
     busy = true;
     try {
-      const r = await api('pdv_product_save', { p_id: p ? p.id : null, p_name: name, p_price: price });
+      const r = await api('pdv_product_upsert', { p_id: p ? p.id : null, p_name: name, p_price: price, p_active: active });
       if (r.error) { toast('Não foi possível salvar o produto', 'err'); busy = false; return; }
       m.close(true);
+      if (!active && p) { delete qty[p.id]; saveCart(); }
       await loadProducts(); renderProdutos(); renderPdv();
       toast('Produto salvo', 'ok');
     } catch (e) { busy = false; }
@@ -1109,7 +1147,7 @@ async function boot() {
     if (pin) {
       try {
         const r = await rpc('pdv_products_list', { p_pin: pin });
-        if (!r.error) { products = (r.products || []).map(p => ({ ...p, name: up(p.name) })); ok = true; }
+        if (!r.error) { products = (r.products || []).map(normP); ok = true; }
         else if (r.error === 'locked') toast('Muitas tentativas. Aguarde 1 minuto.', 'err');
       } catch (e) { return setLoading(true, 'Sem conexão com o servidor.', true); }
     }
