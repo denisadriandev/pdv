@@ -143,6 +143,23 @@
   .fc-tag { border-radius: 8px; padding: 2px 7px; font-size: 11px; font-weight: 700; }
   .fc-tag.good { background: #DDF3E4; color: #1B6B3A; }
   .fc-tag.bad { background: var(--offwhite); color: var(--muted); }
+  .lnk { background: none; border: none; padding: 0; color: var(--magenta-d); font: inherit; font-weight: 700; text-decoration: underline; }
+  .pr-edge { margin: 14px 2px 0; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .card.prio { min-height: 58px; padding: 8px 12px; cursor: grab; }
+  .card.prio svg { stroke: #B79FAE; width: 22px; height: 22px; }
+  .card.prio.pcs { background: #FFF7D6; border-color: var(--yellow); }
+  .rk { min-width: 30px; font-weight: 700; font-size: 13px; color: var(--muted); }
+  .pc { flex: none; min-width: 46px; height: 34px; padding: 0 8px; display: grid; place-items: center; font-weight: 700; font-size: 15px; color: var(--ink); background: var(--c, var(--offwhite)); }
+  .pc.note { border-radius: 6px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.55); }
+  .pc.coin { border-radius: 50%; width: 38px; min-width: 38px; height: 38px; padding: 0; background: #E5C46B; font-size: 13px; box-shadow: inset 0 0 0 3px rgba(255,255,255,.5); }
+  .pc.cnt { border-radius: 10px; background: var(--blue); }
+  .card.prio .n small { white-space: normal; }
+  #ptr { position: fixed; left: 50%; top: calc(var(--header-h) + env(safe-area-inset-top)); z-index: 25; display: flex; align-items: center; gap: 8px; background: #fff; color: var(--ink); border-radius: 24px; padding: 8px 16px 8px 10px; font-size: 13px; font-weight: 700; box-shadow: 0 6px 20px rgba(58,22,49,.25); transform: translate(-50%, -80px); opacity: 0; pointer-events: none; }
+  #ptr.snap { transition: transform .25s ease, opacity .25s ease; }
+  #ptr .ptr-ic { width: 26px; height: 26px; padding: 4px; border-radius: 50%; background: var(--magenta-d); stroke: #fff; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .1s linear, background .15s; }
+  #ptr.armed .ptr-ic { background: #1E7B4F; }
+  #ptr.spin .ptr-ic { animation: ptrspin .8s linear infinite; transform: none !important; }
+  @keyframes ptrspin { to { transform: rotate(360deg); } }
   .fc-save { display: inline-block; background: var(--yellow); color: var(--ink); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
   .fc-empty { background: var(--bg); border-radius: 14px; padding: 14px; font-size: 14px; color: var(--ink); }
 
@@ -385,6 +402,17 @@
       </div>
     </section>
 
+    <!-- Ajuste do troco -->
+    <section id="view-troco" class="view page hidden" aria-label="Ajuste do troco">
+      <div class="page-in">
+        <p class="hint" style="margin-top:0">Segure uma peça e arraste. Quanto mais acima, mais o facilitador tenta <b>poupar</b> essa nota ou moeda no caixa (evita devolvê-la como troco). Ajuste conforme o que está faltando hoje.</p>
+        <div class="pr-edge">▲ Mais prioritário de poupar</div>
+        <div class="cards" id="prioList" role="list" style="margin-top:6px"></div>
+        <div class="pr-edge">▼ Menos prioritário</div>
+        <button class="outline big" id="prioReset" style="margin-top:12px">Restaurar padrão</button>
+      </div>
+    </section>
+
     <!-- Vendas -->
     <section id="view-vendas" class="view page hidden" aria-label="Vendas">
       <div class="page-in">
@@ -403,12 +431,14 @@
     <button class="d-item" data-go="pdv"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h10.2L20 7H6.2"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>PDV</button>
     <button class="d-item" data-go="produtos"><svg viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8L3 12z"/><circle cx="7.5" cy="8.5" r="1.2"/></svg>Produtos</button>
     <button class="d-item" data-go="vendas"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z"/><path d="M9 8h6M9 12h6"/></svg>Vendas</button>
+    <button class="d-item" data-go="troco"><svg viewBox="0 0 24 24"><path d="M7 4v13M3.5 13.5L7 17l3.5-3.5M17 20V7M13.5 10.5L17 7l3.5 3.5"/></svg>Ajuste do troco</button>
     <div class="d-sep"></div>
     <button class="d-item" id="pinBtn"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/></svg>Alterar PIN</button>
     <button class="d-item" id="lockBtn"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Bloquear</button>
   </div>
 </nav>
 
+<div id="ptr" aria-hidden="true"><svg class="ptr-ic" viewBox="0 0 24 24"><path d="M12 4v13M6 12l6 6 6-6"/></svg><span id="ptrT">Puxe para atualizar</span></div>
 <div id="modal-root"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="loading"><div style="text-align:center"><div id="loadMsg">Carregando…</div><button class="solid retry hidden" id="retryBtn">Tentar novamente</button></div></div>
@@ -759,20 +789,54 @@ const NOTE_C = [20000, 10000, 5000, 2000, 1000, 500, 200];
 const DENOMS = [...NOTE_C, 100, 50, 25, 10, 5, 1];
 const EXTRA_WHOLE = [5000, 2000, 1000, 500, 200, 100];
 const EXTRA_COINS = [50, 25, 10, 5];
-/* Prioridades do troco (menor = melhor): 1º "peso" do que sai do caixa — qualquer moeda = 4 (poupar moedas vem antes), nota de R$ 2 = 3, nota de R$ 5 = 2; 2º total de peças devolvidas. */
-const LOWW = { 200: 3, 500: 2, 100: 4, 50: 4, 25: 4, 10: 4, 5: 4, 1: 4 };
-const sc = b => { let L = 0, p = 0, n2 = 0, n5 = 0, nc = 0; for (const [d, n] of b) { L += (LOWW[d] || 0) * n; p += n; if (d === 200) n2 = n; else if (d === 500) n5 = n; else if (d < 200) nc += n; } return { L, p, n2, n5, nc }; };
-const cmpSc = (x, y) => x.L - y.L || x.p - y.p;
-/* Melhor composição do troco (DP) pelos mesmos critérios. */
+/* Prioridades de poupar (ordem do usuário, de cima p/ baixo). 'p' = "menos peças no troco". Salvo neste aparelho. */
+const PRIO_DEF = ['1', '5', '10', '25', '50', '100', '200', '500', 'p', '1000', '2000', '5000', '10000', '20000'];
+const LS_PRIO = 'ca_pdv_prio';
+function loadPrio() {
+  try { const a = JSON.parse(lget(LS_PRIO) || 'null'); if (Array.isArray(a) && a.length === PRIO_DEF.length && PRIO_DEF.every(x => a.includes(x))) return a; } catch (e) {}
+  return PRIO_DEF.slice();
+}
+let prio = loadPrio();
+const savePrio = () => lset(LS_PRIO, JSON.stringify(prio));
+const BASE = 100000n;
+let WT = {}, PW = 0n;
+function buildWeights() {   // quanto mais acima na lista, maior o peso (ordem estritamente lexicográfica)
+  const N = prio.length; WT = {};
+  prio.forEach((id, i) => { const w = BASE ** BigInt(N - i); if (id === 'p') PW = w; else WT[Number(id)] = w; });
+}
+buildWeights();
+const sc = b => { let v = 0n, p = 0; const c = {}; for (const [d, n] of b) { v += (WT[d] + PW) * BigInt(n); p += n; c[d] = n; } return { v, p, c }; };
+const cmpSc = (x, y) => x.v < y.v ? -1 : x.v > y.v ? 1 : 0;
+/* Melhor composição do troco (DP por camadas) pelas prioridades. Moedas: no máximo 4 de cada tipo (ninguém devolve 100 moedas). */
+const COIN_MAX = 4;
 function makeBreaker(max) {
-  const W = d => 1 + 1e5 * (LOWW[d] || 0);
-  const dp = new Float64Array(max + 1).fill(Infinity), pick = new Int8Array(max + 1).fill(-1);
-  dp[0] = 0;
-  for (let c = 1; c <= max; c++) for (let i = 0; i < DENOMS.length; i++) {
-    const d = DENOMS[i]; if (d > c) continue;
-    const v = dp[c - d] + W(d); if (v < dp[c]) { dp[c] = v; pick[c] = i; }
+  const n = DENOMS.length, cnts = [];
+  let prev = new Array(max + 1).fill(null); prev[0] = 0n;
+  for (let i = 0; i < n; i++) {
+    const d = DENOMS[i], w = WT[d] + PW, coin = d < 200, cur = new Array(max + 1).fill(null), cnt = new Int16Array(max + 1);
+    if (coin) {
+      const wk = [0n]; for (let k = 1; k <= COIN_MAX; k++) wk.push(wk[k - 1] + w);
+      for (let c = 0; c <= max; c++) {
+        let best = prev[c], kb = 0;
+        for (let k = 1; k <= COIN_MAX && k * d <= c; k++) { const p = prev[c - k * d]; if (p === null) continue; const v = p + wk[k]; if (best === null || v < best) { best = v; kb = k; } }
+        cur[c] = best; cnt[c] = kb;
+      }
+    } else {
+      for (let c = 0; c <= max; c++) {
+        let best = prev[c], kb = 0;
+        if (c >= d && cur[c - d] !== null) { const v = cur[c - d] + w; if (best === null || v < best) { best = v; kb = cnt[c - d] + 1; } }
+        cur[c] = best; cnt[c] = kb;
+      }
+    }
+    cnts.push(cnt); prev = cur;
   }
-  return c => { const m = new Map(); while (c > 0) { const d = DENOMS[pick[c]]; m.set(d, (m.get(d) || 0) + 1); c -= d; } return DENOMS.filter(d => m.has(d)).map(d => [d, m.get(d)]); };
+  const last = prev;
+  return c => {
+    if (c < 0 || c > max || last[c] === null) return null;
+    const o = [];
+    for (let i = n - 1; i >= 0; i--) { const k = cnts[i][c]; if (k) { o.push([DENOMS[i], k]); c -= k * DENOMS[i]; } }
+    return o.reverse();
+  };
 }
 const kind = (d, n) => d >= 200 ? (n > 1 ? 'notas' : 'nota') : (n > 1 ? 'moedas' : 'moeda');
 const denTxt = d => `${d >= 200 ? 'nota' : 'moeda'} de ${brl(d / 100)}`;
@@ -791,20 +855,22 @@ function extraCombos(T) {
 }
 function changeTips(T, B) {
   const maxE = 2 * EXTRA_WHOLE[0], brk = makeBreaker(B + maxE - T);
-  const c0 = B - T, b0 = brk(c0), s0 = sc(b0);
+  const c0 = B - T, b0 = brk(c0) || [], s0 = sc(b0);
   let out = [];
   for (const [e, parts] of extraCombos(T)) {
     if (e >= T) continue;                       // pagar o valor exato só com a parte extra e devolver a nota: sem sentido
-    const P = B + e, c = P - T, b = brk(c), s = sc(b);
+    const P = B + e, c = P - T, b = brk(c); if (!b) continue;
+    const s = sc(b);
     if (cmpSc(s, s0) < 0) out.push({ e, parts, P, c, b, s });
   }
   // descarta opção que só acrescenta peças a outra sem melhorar o troco
   out = out.filter(x => !out.some(y => y !== x && cmpSc(y.s, x.s) <= 0 && y.parts.length < x.parts.length && y.parts.every(d => x.parts.includes(d))));
   out.sort((x, y) => cmpSc(x.s, y.s) || x.parts.length - y.parts.length || x.e - y.e);
   out = out.slice(0, 5);
-  out.forEach(t => { t.d = { n2: t.s.n2 - s0.n2, n5: t.s.n5 - s0.n5, nc: t.s.nc - s0.nc, p: t.s.p - s0.p }; });
+  out.forEach(t => { t.dc = prio.filter(id => id !== 'p').map(id => [Number(id), (t.s.c[id] || 0) - (s0.c[id] || 0)]).filter(x => x[1]); t.dp = t.s.p - s0.p; });
   return { c0, b0, s0, tips: out };
 }
+const tagD = (n, d) => `<span class="fc-tag ${n < 0 ? 'good' : 'bad'}">${n < 0 ? '−' : '+'}${Math.abs(n)} ${kind(d, Math.abs(n))} de ${brl(d / 100)}</span>`;
 const tagTxt = (d, lbl, un, pl) => d ? `<span class="fc-tag ${d < 0 ? 'good' : 'bad'}">${d < 0 ? '−' : '+'}${Math.abs(d)} ${Math.abs(d) > 1 ? pl : un}${lbl ? ' de ' + lbl : ''}</span>` : '';
 function setPaid(v) { paid = v; updateTotals(); saveCart(); }
 
@@ -833,11 +899,11 @@ $('#fcBtn').addEventListener('click', () => {
     if (r.c0 === 0) h += `<div class="fc-empty">Valor exato: não precisa de troco.</div>`;
     else if (!tips.length) h += `<div class="fc-empty">Nenhuma opção melhora esse troco.</div>`;
     else h += `<div class="fc-list">${tips.map((t, i) => `<button type="button" class="fc-card" data-i="${i}">
-        <div class="fc-top"><span class="fc-rank${i === 0 ? ' best' : ''}">${i + 1}º</span>${i === 0 ? '<span class="fc-bestl">Melhor opção</span>' : ''}<span class="fc-tags">${tagTxt(t.d.n2, 'R$ 2', 'nota', 'notas')}${tagTxt(t.d.n5, 'R$ 5', 'nota', 'notas')}${tagTxt(t.d.nc, '', 'moeda', 'moedas')}${tagTxt(t.d.p, '', 'peça', 'peças')}</span></div>
+        <div class="fc-top"><span class="fc-rank${i === 0 ? ' best' : ''}">${i + 1}º</span>${i === 0 ? '<span class="fc-bestl">Melhor opção</span>' : ''}<span class="fc-tags">${t.dc.slice(0, 3).map(([d, n]) => tagD(n, d)).join('')}${tagTxt(t.dp, '', 'peça', 'peças')}</span></div>
         <div class="fc-pay"><span class="lbl">Peça a mais ao cliente</span><span class="chip-b">${brl(P / 100)}</span>${t.parts.map(d => `<span class="chip-x"><small>${denTxt(d)}</small>+ ${brl(d / 100)}</span>`).join('')}</div>
         <div class="fc-res"><span>Cliente paga <b>${brl(t.P / 100)}</b><br><span class="d">Troco: ${breakTxt(t.b)}</span></span><span class="t">${brl(t.c / 100)}</span></div>
       </button>`).join('')}</div>
-      <p class="fc-info" style="margin-top:10px">Da melhor para a menos boa: 1º poupar suas moedas (mais importante), depois notas de R$ 2 e de R$ 5; 2º devolver menos peças. Toque em uma opção para usá-la como valor da nota.</p>`;
+      <p class="fc-info" style="margin-top:10px">Da melhor para a menos boa, conforme suas <button type="button" class="lnk" data-a="prio">prioridades de troco</button>. Toque em uma opção para usá-la como valor da nota.</p>`;
     body.innerHTML = h;
   }
   render();
@@ -850,6 +916,7 @@ $('#fcBtn').addEventListener('click', () => {
     }
     const c = e.target.closest('.fc-card');
     if (c) { setPaid(tips[Number(c.dataset.i)].P / 100); return m.close(); }
+    if (e.target.closest('[data-a="prio"]')) { m.close(); return go('troco'); }
     if (e.target.closest('[data-a]')) m.close();
   });
 });
@@ -914,9 +981,10 @@ async function toggleActive(p) {
 }
 $('#newProd').addEventListener('click', () => editProduct(null));
 
-/* ---- ordenar produtos: segurar e arrastar ---- */
-(function () {
-  const list = $('#prodList'), HOLD = 350, MOVE = 8;
+/* ---- ordenar: segurar e arrastar (produtos e prioridades do troco) ---- */
+let dragging = false;
+function makeSortable({ list, scroller, ignore, onChange }) {
+  const HOLD = 350, MOVE = 8;
   let st = null, suppress = false, raf = 0;
 
   list.addEventListener('click', e => { if (suppress) { e.stopPropagation(); e.preventDefault(); } }, true);
@@ -925,7 +993,7 @@ $('#newProd').addEventListener('click', () => editProduct(null));
 
   list.addEventListener('pointerdown', e => {
     if (st || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    const c = e.target.closest('.card'); if (!c || e.target.closest('.sw')) return;
+    const c = e.target.closest('.card'); if (!c || (ignore && e.target.closest(ignore))) return;
     st = { c, pid: e.pointerId, x: e.clientX, y: e.clientY, cy: e.clientY, drag: false, grab: 0, before: ids() };
     st.timer = setTimeout(start, HOLD);
   });
@@ -942,7 +1010,7 @@ $('#newProd').addEventListener('click', () => editProduct(null));
   function abort() { clearTimeout(st.timer); st = null; }
   function start() {
     if (!st) return;
-    st.drag = true;
+    st.drag = true; dragging = true;
     st.grab = st.cy - st.c.getBoundingClientRect().top;
     st.c.classList.add('drag');
     safe(() => st.c.setPointerCapture(st.pid));
@@ -962,19 +1030,25 @@ $('#newProd').addEventListener('click', () => editProduct(null));
   }
   function tick() {   // rolagem automática perto das bordas
     if (!st || !st.drag) return;
-    const sc = $('#view-produtos'), r = sc.getBoundingClientRect();
-    if (st.cy < r.top + 70) { sc.scrollTop -= 12; update(); }
-    else if (st.cy > r.bottom - 70) { sc.scrollTop += 12; update(); }
+    const r = scroller.getBoundingClientRect();
+    if (st.cy < r.top + 70) { scroller.scrollTop -= 12; update(); }
+    else if (st.cy > r.bottom - 70) { scroller.scrollTop += 12; update(); }
     raf = requestAnimationFrame(tick);
   }
-  async function finish() {
+  function finish() {
     clearTimeout(st.timer); cancelAnimationFrame(raf);
-    const s = st; st = null;
+    const s = st; st = null; dragging = false;
     if (!s.drag) return;
     s.c.classList.remove('drag'); s.c.style.transform = '';
     suppress = true; setTimeout(() => { suppress = false; }, 80);
     const now = ids();
-    if (now.join() === s.before.join()) return;
+    if (now.join() !== s.before.join()) onChange(now);
+  }
+}
+
+makeSortable({
+  list: $('#prodList'), scroller: $('#view-produtos'), ignore: '.sw',
+  async onChange(now) {
     const pos = Object.fromEntries(now.map((id, i) => [id, i]));
     products.sort((a, b) => pos[a.id] - pos[b.id]);
     renderPdv();
@@ -987,7 +1061,28 @@ $('#newProd').addEventListener('click', () => editProduct(null));
       try { await loadProducts(); renderProdutos(); renderPdv(); } catch (_) {}
     }
   }
-})();
+});
+
+/* ============ Ajuste do troco (prioridades de poupar) ============ */
+const PR_COL = { 200: '#8E9AAF', 500: '#9B6BB0', 1000: '#E0605C', 2000: '#F1CF68', 5000: '#F0A04B', 10000: '#5B9BD5', 20000: '#9A9A9A' };
+const GRIP = '<svg viewBox="0 0 24 24"><path d="M5 9h14M5 15h14"/></svg>';
+function renderPrio() {
+  $('#prioList').innerHTML = prio.map((id, i) => {
+    let pc, name, sub = '';
+    if (id === 'p') { pc = '<span class="pc cnt">Σ</span>'; name = 'Menos peças no troco'; sub = 'Devolver poucas notas e moedas'; }
+    else {
+      const d = Number(id), note = d >= 200;
+      pc = `<span class="pc ${note ? 'note' : 'coin'}" style="--c:${PR_COL[d] || ''}">${d >= 100 ? (d / 100) : d + '¢'}</span>`;
+      name = `${note ? 'Nota' : 'Moeda'} de ${brl(d / 100)}`;
+    }
+    return `<div class="card prio${id === 'p' ? ' pcs' : ''}" data-id="${id}" role="listitem"><span class="rk">${i + 1}º</span>${pc}<span class="n">${esc(name)}${sub ? `<small>${sub}</small>` : ''}</span>${GRIP}</div>`;
+  }).join('');
+}
+makeSortable({
+  list: $('#prioList'), scroller: $('#view-troco'),
+  onChange(now) { prio = now; savePrio(); buildWeights(); renderPrio(); toast('Prioridade salva', 'ok'); }
+});
+$('#prioReset').addEventListener('click', () => { prio = PRIO_DEF.slice(); savePrio(); buildWeights(); renderPrio(); toast('Prioridades restauradas', 'ok'); });
 
 function editProduct(p) {
   let price = p ? p.price : null;
@@ -1097,7 +1192,7 @@ $('#saleList').addEventListener('click', async e => {
 });
 
 /* ============ Navegação ============ */
-const TITLES = { pdv: 'PDV', produtos: 'Produtos', vendas: 'Vendas' };
+const TITLES = { pdv: 'PDV', produtos: 'Produtos', vendas: 'Vendas', troco: 'Ajuste do troco' };
 let route = 'pdv';
 let ready = false;
 
@@ -1114,6 +1209,7 @@ function applyRoute() {
   if (route === 'pdv') { loadProducts().then(renderPdv).catch(() => {}); renderPdv(); }
   if (route === 'produtos') { renderProdutos(); loadProducts().then(renderProdutos).catch(() => {}); }
   if (route === 'vendas') { renderSales(); loadSales(true); }
+  if (route === 'troco') renderPrio();
 }
 window.addEventListener('hashchange', applyRoute);
 function renderAll() { renderPdv(); renderProdutos(); }
@@ -1149,6 +1245,44 @@ function fsChanged() {
 }
 document.addEventListener('fullscreenchange', fsChanged);
 document.addEventListener('webkitfullscreenchange', fsChanged);
+
+/* ============ Puxar para atualizar ============ */
+(function () {
+  const ptr = $('#ptr'), txt = $('#ptrT'), ic = ptr.querySelector('.ptr-ic');
+  const TH = 70, MAX = 120;
+  let y0 = null, dist = 0, armed = false, busy = false;
+  const atTop = el => { for (let n = el; n && n !== document.body; n = n.parentElement) if (n.scrollTop > 0) return false; return true; };
+  const show = d => {
+    ptr.style.transform = `translate(-50%, ${d - 70}px)`; ptr.style.opacity = Math.min(1, d / 40);
+    ic.style.transform = `rotate(${Math.min(1, d / TH) * 180}deg)`;
+  };
+  function reset() { y0 = null; dist = 0; armed = false; ptr.classList.add('snap'); ptr.classList.remove('armed'); ptr.style.transform = 'translate(-50%, -80px)'; ptr.style.opacity = 0; }
+  document.addEventListener('touchstart', e => {
+    if (busy || e.touches.length !== 1 || modalStack.length || drawerOpen || dragging || !atTop(e.target)) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dist = 0; armed = false; ptr.classList.remove('snap', 'armed'); txt.textContent = 'Puxe para atualizar';
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (y0 == null || busy) return;
+    if (dragging || modalStack.length) return reset();
+    const d = e.touches[0].clientY - y0;
+    if (d <= 0) { if (dist > 0) show(dist = 0); return; }
+    if (e.cancelable) e.preventDefault();
+    dist = Math.min(MAX, d * 0.5); show(dist);
+    if (dist >= TH && !armed) { armed = true; ptr.classList.add('armed'); txt.textContent = 'Solte para atualizar'; safe(() => navigator.vibrate && navigator.vibrate(12)); }
+    else if (dist < TH && armed) { armed = false; ptr.classList.remove('armed'); txt.textContent = 'Puxe para atualizar'; }
+  }, { passive: false });
+  const end = () => {
+    if (y0 == null || busy) return;
+    if (!armed) return reset();
+    busy = true; y0 = null;
+    ptr.classList.add('snap', 'spin'); ptr.classList.remove('armed'); txt.textContent = 'Atualizando…';
+    ptr.style.transform = 'translate(-50%, 14px)'; ptr.style.opacity = 1;
+    safe(() => navigator.vibrate && navigator.vibrate([20, 40, 20]));
+    setTimeout(() => location.reload(), 650);
+  };
+  document.addEventListener('touchend', end);
+  document.addEventListener('touchcancel', () => { if (!busy) reset(); });
+})();
 
 /* ============ Inicialização ============ */
 function setLoading(on, msg, retry) {
