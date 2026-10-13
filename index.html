@@ -112,6 +112,29 @@
   .go:disabled { opacity: .5; }
   .sum-actions button:active { transform: scale(.97); }
 
+  .fc { height: 40px; border-radius: 12px; border: none; background: var(--blue); color: var(--ink); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .fc svg { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
+  .fc:active { transform: scale(.98); }
+  .fc-info { font-size: 14px; color: var(--muted); line-height: 1.4; margin: 0 0 10px; }
+  .fc-info b { color: var(--ink); }
+  .fc-bases { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+  .fc-bases button { height: 42px; padding: 0 14px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font-weight: 700; font-size: 15px; color: var(--ink); }
+  .fc-bases button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .fc-list { display: grid; gap: 8px; }
+  .fc-card { width: 100%; text-align: left; background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; display: grid; gap: 6px; }
+  .fc-card:active { background: var(--bg); }
+  .fc-pay { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; }
+  .fc-pay .lbl { font-weight: 600; color: var(--muted); font-size: 12px; width: 100%; }
+  .chip-b, .chip-x { border-radius: 10px; padding: 4px 10px; font-size: 16px; font-weight: 700; }
+  .chip-b { background: var(--offwhite); color: var(--ink); }
+  .chip-x { background: var(--magenta-d); color: #fff; box-shadow: 0 0 0 3px #FBD0E6; }
+  .chip-x small { display: block; font-size: 10px; font-weight: 600; opacity: .95; line-height: 1.1; text-transform: uppercase; letter-spacing: .03em; }
+  .fc-res { font-size: 14px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .fc-res .t { font-weight: 700; color: var(--magenta-d); white-space: nowrap; }
+  .fc-res .d { color: var(--muted); font-size: 13px; }
+  .fc-save { display: inline-block; background: var(--yellow); color: var(--ink); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+  .fc-empty { background: var(--bg); border-radius: 14px; padding: 14px; font-size: 14px; color: var(--ink); }
+
   .plist-wrap { flex: 1; min-height: 0; container-type: size; }
   .products {
     height: 100%; overflow-y: auto; display: grid; gap: var(--gap); align-content: start;
@@ -320,6 +343,7 @@
           <div class="stat"><span class="lbl">Total</span><span class="val" id="total">R$ 0,00</span></div>
           <div class="stat change" id="changeStat" aria-live="polite"><span class="lbl" id="changeLbl">Troco</span><span class="val" id="change">R$ 0,00</span></div>
         </div>
+        <button class="fc" id="fcBtn" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.6 2.5-1.6s2.5.7 2.5 1.7c0 2.3-5 1.2-5 3.7 0 1 1 1.7 2.5 1.7s2.5-.7 2.5-1.7"/></svg>Facilitador de troco</button>
         <div class="sum-actions">
           <button class="paid" id="paidBtn" aria-label="Informar valor da nota"><span class="lbl">Valor da nota</span><span class="v" id="paidVal">Toque aqui</span></button>
           <button class="ghost" id="clearBtn">Limpar</button>
@@ -702,6 +726,78 @@ $('#paidBtn').addEventListener('click', async () => {
   if (v == null) return;
   paid = bufToNum(v);
   updateTotals(); saveCart();
+});
+
+
+/* ============ Facilitador de troco ============ */
+const NOTE_C = [20000, 10000, 5000, 2000, 1000, 500, 200];
+const DENOMS = [...NOTE_C, 100, 50, 25, 10, 5, 1];
+const EXTRA_C = [5000, 2000, 1000, 500, 200, 100, 50, 25, 10, 5];
+const breakdown = c => { const o = []; for (const d of DENOMS) { const n = Math.floor(c / d); if (n) { o.push([d, n]); c -= n * d; } } return o; };
+const npieces = b => b.reduce((s, [, n]) => s + n, 0);
+const kind = (d, n) => d >= 200 ? (n > 1 ? 'notas' : 'nota') : (n > 1 ? 'moedas' : 'moeda');
+const denTxt = d => `${d >= 200 ? 'nota' : 'moeda'} de ${brl(d / 100)}`;
+const breakTxt = b => b.length ? b.map(([d, n]) => `${n} ${kind(d, n)} de ${brl(d / 100)}`).join(' + ') : 'sem troco';
+
+function extraCombos() {   // até 2 peças que o cliente pode somar à nota
+  const m = new Map();
+  for (const a of EXTRA_C) { if (!m.has(a) || m.get(a).length > 1) m.set(a, [a]); }
+  for (let i = 0; i < EXTRA_C.length; i++) for (let j = i; j < EXTRA_C.length; j++) {
+    const e = EXTRA_C[i] + EXTRA_C[j];
+    if (!m.has(e)) m.set(e, [EXTRA_C[i], EXTRA_C[j]]);
+  }
+  return m;
+}
+function changeTips(T, B) {
+  const c0 = B - T, b0 = breakdown(c0), p0 = npieces(b0), out = [];
+  for (const [e, parts] of extraCombos()) {
+    const P = B + e, c = P - T, b = breakdown(c), p = npieces(b);
+    if (p < p0) out.push({ e, parts, P, c, b, saved: p0 - p });
+  }
+  out.sort((x, y) => y.saved - x.saved || x.parts.length - y.parts.length || x.e - y.e);
+  return { c0, b0, p0, tips: out.slice(0, 5) };
+}
+function baseOptions(T) {
+  let arr = [];
+  if (paid != null && cents(paid) >= T) arr.push(cents(paid));
+  if (T <= 20000) { for (const n of [...NOTE_C].reverse()) if (n >= T) arr.push(n); }
+  else { const s = Math.ceil(T / 10000) * 10000; arr.push(s, s + 10000, s + 20000); }
+  arr = [...new Set(arr)].sort((a, b) => a - b);
+  const first = paid != null && cents(paid) >= T ? cents(paid) : null;
+  const rest = arr.filter(v => v !== first).slice(0, first == null ? 3 : 2);
+  return { list: first == null ? rest : [first, ...rest].sort((a, b) => a - b), def: first != null ? first : rest[0] };
+}
+
+$('#fcBtn').addEventListener('click', () => {
+  const T = totalC();
+  if (T <= 0) return toast('Adicione produtos ao pedido', 'err');
+  const { list, def } = baseOptions(T);
+  let B = def;
+  const m = openModal(`<div class="sheet" role="dialog" aria-label="Facilitador de troco">
+    <h2>Facilitador de troco</h2><div id="fcBody"></div>
+    <div class="actions"><button class="solid" data-a="x">Fechar</button></div></div>`);
+  const body = m.sheet.querySelector('#fcBody');
+  function render() {
+    const r = changeTips(T, B);
+    let h = `<p class="fc-info">Total <b>${brl(T / 100)}</b>. Se o cliente der <b>${brl(B / 100)}</b>, o troco é <b>${brl(r.c0 / 100)}</b>${r.c0 ? ` (${breakTxt(r.b0)})` : ''}.</p>
+      <div class="fc-bases">${list.map(v => `<button type="button" data-base="${v}" class="${v === B ? 'on' : ''}">Nota ${brl(v / 100)}</button>`).join('')}</div>`;
+    if (r.c0 === 0) h += `<div class="fc-empty">Valor exato: não precisa de troco.</div>`;
+    else if (!r.tips.length) h += `<div class="fc-empty">O troco já está simples (${breakTxt(r.b0)}). Não há como melhorar com notas ou moedas pequenas.</div>`;
+    else h += `<div class="fc-list">${r.tips.map((t, i) => `<button type="button" class="fc-card" data-i="${i}">
+        <div class="fc-pay"><span class="lbl">Peça a mais ao cliente</span><span class="chip-b">${brl(B / 100)}</span>${t.parts.map(d => `<span class="chip-x"><small>${denTxt(d)}</small>+ ${brl(d / 100)}</span>`).join('')}</div>
+        <div class="fc-res"><span>Cliente paga <b>${brl(t.P / 100)}</b><br><span class="d">Troco: ${breakTxt(t.b)}</span></span><span class="t">${brl(t.c / 100)}<br><span class="fc-save">${t.saved} ${t.saved > 1 ? 'peças' : 'peça'} a menos</span></span></div>
+      </button>`).join('')}</div>
+      <p class="fc-info" style="margin-top:10px">Toque em uma opção para usá-la como valor da nota.</p>`;
+    body.innerHTML = h;
+    body._tips = r.tips;
+  }
+  render();
+  m.sheet.addEventListener('click', e => {
+    const b = e.target.closest('[data-base]'); if (b) { B = Number(b.dataset.base); return render(); }
+    const c = e.target.closest('.fc-card');
+    if (c) { const t = body._tips[Number(c.dataset.i)]; paid = t.P / 100; updateTotals(); saveCart(); return m.close(); }
+    if (e.target.closest('[data-a]')) m.close();
+  });
 });
 
 function clearOrder() { qty = {}; paid = null; saveCart(); renderPdv(); }
