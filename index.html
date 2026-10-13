@@ -135,6 +135,14 @@
   .fc-res { font-size: 14px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
   .fc-res .t { font-weight: 700; color: var(--magenta-d); white-space: nowrap; }
   .fc-res .d { color: var(--muted); font-size: 13px; }
+  .fc-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .fc-rank { min-width: 26px; height: 24px; padding: 0 6px; border-radius: 12px; background: var(--offwhite); color: var(--ink); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+  .fc-rank.best { background: var(--yellow); }
+  .fc-bestl { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .fc-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+  .fc-tag { border-radius: 8px; padding: 2px 7px; font-size: 11px; font-weight: 700; }
+  .fc-tag.good { background: #DDF3E4; color: #1B6B3A; }
+  .fc-tag.bad { background: var(--offwhite); color: var(--muted); }
   .fc-save { display: inline-block; background: var(--yellow); color: var(--ink); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
   .fc-empty { background: var(--bg); border-radius: 14px; padding: 14px; font-size: 14px; color: var(--ink); }
 
@@ -751,8 +759,21 @@ const NOTE_C = [20000, 10000, 5000, 2000, 1000, 500, 200];
 const DENOMS = [...NOTE_C, 100, 50, 25, 10, 5, 1];
 const EXTRA_WHOLE = [5000, 2000, 1000, 500, 200, 100];
 const EXTRA_COINS = [50, 25, 10, 5];
-const breakdown = c => { const o = []; for (const d of DENOMS) { const n = Math.floor(c / d); if (n) { o.push([d, n]); c -= n * d; } } return o; };
-const npieces = b => b.reduce((s, [, n]) => s + n, 0);
+/* Prioridades do troco (menor = melhor): 1º "peso" das peças baixas que saem do caixa (nota de R$ 2 = 3, nota de R$ 5 = 2, moeda de R$ 1 = 1); 2º total de peças devolvidas. */
+const LOWW = { 200: 3, 500: 2, 100: 1, 50: 1, 25: 1, 10: 1, 5: 1, 1: 1 };
+const sc = b => { let L = 0, p = 0, n2 = 0, n5 = 0, n1 = 0; for (const [d, n] of b) { L += (LOWW[d] || 0) * n; p += n; if (d === 200) n2 = n; else if (d === 500) n5 = n; else if (d === 100) n1 = n; } return { L, p, n2, n5, n1 }; };
+const cmpSc = (x, y) => x.L - y.L || x.p - y.p;
+/* Melhor composição do troco (DP) pelos mesmos critérios. */
+function makeBreaker(max) {
+  const W = d => 1 + 1e5 * (LOWW[d] || 0);
+  const dp = new Float64Array(max + 1).fill(Infinity), pick = new Int8Array(max + 1).fill(-1);
+  dp[0] = 0;
+  for (let c = 1; c <= max; c++) for (let i = 0; i < DENOMS.length; i++) {
+    const d = DENOMS[i]; if (d > c) continue;
+    const v = dp[c - d] + W(d); if (v < dp[c]) { dp[c] = v; pick[c] = i; }
+  }
+  return c => { const m = new Map(); while (c > 0) { const d = DENOMS[pick[c]]; m.set(d, (m.get(d) || 0) + 1); c -= d; } return DENOMS.filter(d => m.has(d)).map(d => [d, m.get(d)]); };
+}
 const kind = (d, n) => d >= 200 ? (n > 1 ? 'notas' : 'nota') : (n > 1 ? 'moedas' : 'moeda');
 const denTxt = d => `${d >= 200 ? 'nota' : 'moeda'} de ${brl(d / 100)}`;
 const breakTxt = b => b.length ? b.map(([d, n]) => `${n} ${kind(d, n)} de ${brl(d / 100)}`).join(' + ') : 'sem troco';
@@ -769,18 +790,22 @@ function extraCombos(T) {
   return m;
 }
 function changeTips(T, B) {
-  const c0 = B - T, b0 = breakdown(c0), p0 = npieces(b0);
+  const maxE = 2 * EXTRA_WHOLE[0], brk = makeBreaker(B + maxE - T);
+  const c0 = B - T, b0 = brk(c0), s0 = sc(b0);
   let out = [];
   for (const [e, parts] of extraCombos(T)) {
     if (e >= T) continue;                       // pagar o valor exato só com a parte extra e devolver a nota: sem sentido
-    const P = B + e, c = P - T, b = breakdown(c), p = npieces(b);
-    if (p < p0) out.push({ e, parts, P, c, b, saved: p0 - p });
+    const P = B + e, c = P - T, b = brk(c), s = sc(b);
+    if (cmpSc(s, s0) < 0) out.push({ e, parts, P, c, b, s });
   }
-  // descarta opção que só acrescenta peças a outra sem economizar mais troco
-  out = out.filter(x => !out.some(y => y !== x && y.saved >= x.saved && y.parts.length < x.parts.length && y.parts.every(d => x.parts.includes(d))));
-  out.sort((x, y) => y.saved - x.saved || x.parts.length - y.parts.length || x.e - y.e);
-  return { c0, b0, p0, tips: out.slice(0, 5) };
+  // descarta opção que só acrescenta peças a outra sem melhorar o troco
+  out = out.filter(x => !out.some(y => y !== x && cmpSc(y.s, x.s) <= 0 && y.parts.length < x.parts.length && y.parts.every(d => x.parts.includes(d))));
+  out.sort((x, y) => cmpSc(x.s, y.s) || x.parts.length - y.parts.length || x.e - y.e);
+  out = out.slice(0, 5);
+  out.forEach(t => { t.d = { n2: t.s.n2 - s0.n2, n5: t.s.n5 - s0.n5, n1: t.s.n1 - s0.n1, p: t.s.p - s0.p }; });
+  return { c0, b0, s0, tips: out };
 }
+const tagTxt = (d, lbl, un, pl) => d ? `<span class="fc-tag ${d < 0 ? 'good' : 'bad'}">${d < 0 ? '−' : '+'}${Math.abs(d)} ${Math.abs(d) > 1 ? pl : un}${lbl ? ' de ' + lbl : ''}</span>` : '';
 function setPaid(v) { paid = v; updateTotals(); saveCart(); }
 
 $('#fcBtn').addEventListener('click', () => {
@@ -808,10 +833,11 @@ $('#fcBtn').addEventListener('click', () => {
     if (r.c0 === 0) h += `<div class="fc-empty">Valor exato: não precisa de troco.</div>`;
     else if (!tips.length) h += `<div class="fc-empty">Nenhuma opção melhora esse troco.</div>`;
     else h += `<div class="fc-list">${tips.map((t, i) => `<button type="button" class="fc-card" data-i="${i}">
+        <div class="fc-top"><span class="fc-rank${i === 0 ? ' best' : ''}">${i + 1}º</span>${i === 0 ? '<span class="fc-bestl">Melhor opção</span>' : ''}<span class="fc-tags">${tagTxt(t.d.n2, 'R$ 2', 'nota', 'notas')}${tagTxt(t.d.n5, 'R$ 5', 'nota', 'notas')}${tagTxt(t.d.n1, 'R$ 1', 'moeda', 'moedas')}${tagTxt(t.d.p, '', 'peça', 'peças')}</span></div>
         <div class="fc-pay"><span class="lbl">Peça a mais ao cliente</span><span class="chip-b">${brl(P / 100)}</span>${t.parts.map(d => `<span class="chip-x"><small>${denTxt(d)}</small>+ ${brl(d / 100)}</span>`).join('')}</div>
-        <div class="fc-res"><span>Cliente paga <b>${brl(t.P / 100)}</b><br><span class="d">Troco: ${breakTxt(t.b)}</span></span><span class="t">${brl(t.c / 100)}<br><span class="fc-save">${t.saved} ${t.saved > 1 ? 'peças' : 'peça'} a menos</span></span></div>
+        <div class="fc-res"><span>Cliente paga <b>${brl(t.P / 100)}</b><br><span class="d">Troco: ${breakTxt(t.b)}</span></span><span class="t">${brl(t.c / 100)}</span></div>
       </button>`).join('')}</div>
-      <p class="fc-info" style="margin-top:10px">Toque em uma opção para usá-la como valor da nota.</p>`;
+      <p class="fc-info" style="margin-top:10px">Da melhor para a menos boa: 1º poupar suas notas de R$ 2 (mais importante), de R$ 5 e moedas de R$ 1; 2º devolver menos peças. Toque em uma opção para usá-la como valor da nota.</p>`;
     body.innerHTML = h;
   }
   render();
