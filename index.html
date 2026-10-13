@@ -258,6 +258,7 @@
     display: block; width: 100%; margin-top: 4px; height: 52px; border-radius: 12px; border: 2px solid var(--line);
     padding: 0 14px; font-size: 18px; font-weight: 600; font-family: inherit; color: var(--ink); background: #fff; text-align: left;
   }
+  label.f input#pn { text-transform: uppercase; }
   .fieldbtn { color: var(--magenta-d); }
 
   .items { margin: 4px 0 0; padding: 0; list-style: none; }
@@ -364,6 +365,7 @@ const PAGE = 50;
 /* ============ Utilitários ============ */
 const $ = s => document.querySelector(s);
 const brl = n => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const up = s => String(s == null ? '' : s).toLocaleUpperCase('pt-BR');   // nomes sempre em MAIÚSCULO
 const cents = n => Math.round((Number(n) || 0) * 100);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const safe = (fn) => { try { return fn(); } catch (e) { return null; } };
@@ -621,7 +623,7 @@ function pruneCart() {
 
 async function loadProducts() {
   const r = await api('pdv_products_list');
-  products = r.products || [];
+  products = (r.products || []).map(p => ({ ...p, name: up(p.name) }));
   pruneCart();
 }
 
@@ -730,7 +732,7 @@ function editProduct(p) {
   let price = p ? p.price : null;
   const m = openModal(`<div class="sheet" role="dialog" aria-label="Produto">
     <h2>${p ? 'Editar produto' : 'Novo produto'}</h2>
-    <label class="f">Nome<input id="pn" maxlength="80" autocomplete="off" enterkeyhint="done" value="${p ? esc(p.name) : ''}"></label>
+    <label class="f">Nome<input id="pn" maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" value="${p ? esc(up(p.name)) : ''}"></label>
     <label class="f">Preço<button type="button" class="fieldbtn" id="pp"></button></label>
     <div class="actions">${p ? '<button class="danger" data-a="del">Excluir</button>' : ''}<button class="outline" data-a="cancel">Cancelar</button><button class="solid" data-a="save">Salvar</button></div>
   </div>`, { noFocus: !!p, top: true });
@@ -739,6 +741,10 @@ function editProduct(p) {
   showPrice();
   if (!p) setTimeout(() => pn.focus(), 60);
   pn.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+  pn.addEventListener('input', () => {   // força MAIÚSCULO mantendo a posição do cursor
+    const a = pn.selectionStart, b = pn.selectionEnd, v = up(pn.value);
+    if (v !== pn.value) { pn.value = v; safe(() => pn.setSelectionRange(a, b)); }
+  });
   pp.addEventListener('click', async () => {
     const v = await keypad({ title: 'Preço do produto', mode: 'money', initial: numToBuf(price) });
     if (v != null) { price = bufToNum(v); showPrice(); }
@@ -746,7 +752,7 @@ function editProduct(p) {
   let busy = false;
   async function save() {
     if (busy) return;
-    const name = pn.value.trim();
+    const name = up(pn.value.trim());
     if (!name) { toast('Informe o nome do produto', 'err'); return pn.focus(); }
     if (price == null || isNaN(price)) return toast('Informe o preço', 'err');
     busy = true;
@@ -811,7 +817,7 @@ $('#saleList').addEventListener('click', async e => {
     const s = r.sale;
     const m = openModal(`<div class="sheet" role="dialog" aria-label="Detalhes da venda">
       <h2>Venda nº ${s.daily_number}<br><small style="font-weight:500;color:var(--muted);font-size:13px">${fmtDate(s.created_at)} às ${fmtTime(s.created_at)}</small></h2>
-      <ul class="items">${r.items.map(i => `<li><span class="q">${i.quantity}×</span><span class="nm2">${esc(i.product_name)}<small>${brl(i.unit_price)} cada</small></span><span class="st">${brl(i.subtotal)}</span></li>`).join('')}</ul>
+      <ul class="items">${r.items.map(i => `<li><span class="q">${i.quantity}×</span><span class="nm2">${esc(up(i.product_name))}<small>${brl(i.unit_price)} cada</small></span><span class="st">${brl(i.subtotal)}</span></li>`).join('')}</ul>
       <div class="totals">
         <div class="big-t"><span>Total</span><span>${brl(s.total)}</span></div>
         ${s.paid != null ? `<div><span>Valor da nota</span><span>${brl(s.paid)}</span></div><div><span>Troco</span><span>${brl(s.change_amount)}</span></div>` : ''}
@@ -899,7 +905,7 @@ async function boot() {
     if (pin) {
       try {
         const r = await rpc('pdv_products_list', { p_pin: pin });
-        if (!r.error) { products = r.products || []; ok = true; }
+        if (!r.error) { products = (r.products || []).map(p => ({ ...p, name: up(p.name) })); ok = true; }
         else if (r.error === 'locked') toast('Muitas tentativas. Aguarde 1 minuto.', 'err');
       } catch (e) { return setLoading(true, 'Sem conexão com o servidor.', true); }
     }
