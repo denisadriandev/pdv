@@ -122,6 +122,15 @@
     grid-template-rows: none;
     grid-auto-rows: max(44px, calc((100cqh - 9 * var(--gap)) / 10));
   }
+  /* PC/notebook: 2 colunas (até 30 produtos = 15 por coluna, sem rolagem) */
+  .products.cols2 {
+    grid-template-columns: 1fr 1fr; grid-auto-flow: column;
+    grid-template-rows: repeat(var(--r, 1), minmax(36px, 1fr));
+  }
+  .products.cols2.many {
+    grid-auto-flow: row; grid-template-rows: none;
+    grid-auto-rows: max(36px, calc((100cqh - 14 * var(--gap)) / 15));
+  }
   .row {
     container-type: size; background: var(--card); border: 2px solid var(--line); border-radius: 14px;
     display: flex; align-items: center; gap: 8px; padding: 0 6px; min-height: 0;
@@ -182,12 +191,14 @@
 
   /* ===== produtos ===== */
   .cards { display: grid; gap: 8px; margin-top: 14px; }
-  @media (min-width: 900px) { .cards { grid-template-columns: 1fr 1fr; } }
   .card {
     display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--card);
     border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; min-height: 64px;
   }
   .card:active { background: var(--bg); }
+  .card { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .card.drag { position: relative; z-index: 6; border-color: var(--magenta); background: #FFEAF5; box-shadow: 0 10px 28px rgba(58,22,49,.28); transform: scale(1.02); cursor: grabbing; }
+  .hint { margin: 10px 2px 0; font-size: 13px; color: var(--muted); }
   .card .n { flex: 1; min-width: 0; font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .card .p { font-weight: 700; color: var(--magenta-d); font-size: 16px; white-space: nowrap; }
   .card svg { width: 18px; height: 18px; stroke: var(--muted); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
@@ -322,6 +333,7 @@
     <section id="view-produtos" class="view page hidden" aria-label="Produtos">
       <div class="page-in">
         <button class="solid big" id="newProd">+ Novo produto</button>
+        <div class="hint" id="sortHint">Segure um produto e arraste para mudar a ordem no PDV.</div>
         <div class="cards" id="prodList"></div>
       </div>
     </section>
@@ -629,6 +641,9 @@ async function loadProducts() {
 
 /* ============ PDV ============ */
 const plist = $('#plist');
+const mqWide = window.matchMedia('(min-width: 1000px) and (min-height: 560px)');
+const onMq = () => { if (products.length > 10) renderPdv(); };
+if (mqWide.addEventListener) mqWide.addEventListener('change', onMq); else mqWide.addListener(onMq);
 
 function renderPdv() {
   const n = products.length;
@@ -636,8 +651,10 @@ function renderPdv() {
     plist.className = 'products'; plist.style.removeProperty('--n');
     plist.innerHTML = `<div class="empty">Nenhum produto cadastrado.<br><button class="solid" data-go="produtos">Cadastrar produtos</button></div>`;
   } else {
-    plist.className = 'products' + (n > 10 ? ' many' : '');
+    const two = mqWide.matches && n > 10;   // 2 colunas em tela grande
+    plist.className = 'products' + (two ? ' cols2' : '') + ((two ? n > 30 : n > 10) ? ' many' : '');
     plist.style.setProperty('--n', Math.min(n, 10));
+    plist.style.setProperty('--r', Math.ceil(n / 2));
     plist.innerHTML = products.map(p => {
       const q = qty[p.id] || 0;
       return `<div class="row${q ? ' on' : ''}" data-id="${p.id}">
@@ -727,6 +744,81 @@ $('#prodList').addEventListener('click', e => {
   editProduct(products.find(p => p.id === c.dataset.id));
 });
 $('#newProd').addEventListener('click', () => editProduct(null));
+
+/* ---- ordenar produtos: segurar e arrastar ---- */
+(function () {
+  const list = $('#prodList'), HOLD = 350, MOVE = 8;
+  let st = null, suppress = false, raf = 0;
+
+  list.addEventListener('click', e => { if (suppress) { e.stopPropagation(); e.preventDefault(); } }, true);
+  list.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('touchmove', e => { if (st && st.drag) e.preventDefault(); }, { passive: false });
+
+  list.addEventListener('pointerdown', e => {
+    if (st || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const c = e.target.closest('.card'); if (!c) return;
+    st = { c, pid: e.pointerId, x: e.clientX, y: e.clientY, cy: e.clientY, drag: false, grab: 0, before: ids() };
+    st.timer = setTimeout(start, HOLD);
+  });
+  document.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.pid) return;
+    st.cy = e.clientY;
+    if (!st.drag) { if (Math.hypot(e.clientX - st.x, e.clientY - st.y) > MOVE) abort(); return; }
+    e.preventDefault(); update();
+  });
+  document.addEventListener('pointerup', e => { if (st && e.pointerId === st.pid) finish(); });
+  document.addEventListener('pointercancel', e => { if (st && e.pointerId === st.pid) finish(); });
+
+  const ids = () => [...list.children].map(c => c.dataset.id);
+  function abort() { clearTimeout(st.timer); st = null; }
+  function start() {
+    if (!st) return;
+    st.drag = true;
+    st.grab = st.cy - st.c.getBoundingClientRect().top;
+    st.c.classList.add('drag');
+    safe(() => st.c.setPointerCapture(st.pid));
+    safe(() => navigator.vibrate && navigator.vibrate(15));
+    tick();
+  }
+  function update() {
+    const c = st.c; c.style.transform = '';
+    const want = st.cy - st.grab, h = c.offsetHeight, mid = want + h / 2;
+    for (let i = 0; i < 40; i++) {
+      const nx = c.nextElementSibling, pv = c.previousElementSibling;
+      if (nx && mid > nx.getBoundingClientRect().top + nx.offsetHeight / 2) list.insertBefore(nx, c);
+      else if (pv && mid < pv.getBoundingClientRect().top + pv.offsetHeight / 2) list.insertBefore(c, pv);
+      else break;
+    }
+    c.style.transform = `translateY(${want - c.getBoundingClientRect().top}px) scale(1.02)`;
+  }
+  function tick() {   // rolagem automática perto das bordas
+    if (!st || !st.drag) return;
+    const sc = $('#view-produtos'), r = sc.getBoundingClientRect();
+    if (st.cy < r.top + 70) { sc.scrollTop -= 12; update(); }
+    else if (st.cy > r.bottom - 70) { sc.scrollTop += 12; update(); }
+    raf = requestAnimationFrame(tick);
+  }
+  async function finish() {
+    clearTimeout(st.timer); cancelAnimationFrame(raf);
+    const s = st; st = null;
+    if (!s.drag) return;
+    s.c.classList.remove('drag'); s.c.style.transform = '';
+    suppress = true; setTimeout(() => { suppress = false; }, 80);
+    const now = ids();
+    if (now.join() === s.before.join()) return;
+    const pos = Object.fromEntries(now.map((id, i) => [id, i]));
+    products.sort((a, b) => pos[a.id] - pos[b.id]);
+    renderPdv();
+    try {
+      const r = await api('pdv_products_reorder', { p_ids: now });
+      if (r.error) throw 0;
+      toast('Ordem salva', 'ok');
+    } catch (e) {
+      toast('Não foi possível salvar a ordem', 'err');
+      try { await loadProducts(); renderProdutos(); renderPdv(); } catch (_) {}
+    }
+  }
+})();
 
 function editProduct(p) {
   let price = p ? p.price : null;
