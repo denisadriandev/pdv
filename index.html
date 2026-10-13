@@ -759,9 +759,9 @@ const NOTE_C = [20000, 10000, 5000, 2000, 1000, 500, 200];
 const DENOMS = [...NOTE_C, 100, 50, 25, 10, 5, 1];
 const EXTRA_WHOLE = [5000, 2000, 1000, 500, 200, 100];
 const EXTRA_COINS = [50, 25, 10, 5];
-/* Prioridades do troco (menor = melhor): 1º "peso" das peças baixas que saem do caixa (nota de R$ 2 = 3, nota de R$ 5 = 2, moeda de R$ 1 = 1); 2º total de peças devolvidas. */
-const LOWW = { 200: 3, 500: 2, 100: 1, 50: 1, 25: 1, 10: 1, 5: 1, 1: 1 };
-const sc = b => { let L = 0, p = 0, n2 = 0, n5 = 0, n1 = 0; for (const [d, n] of b) { L += (LOWW[d] || 0) * n; p += n; if (d === 200) n2 = n; else if (d === 500) n5 = n; else if (d === 100) n1 = n; } return { L, p, n2, n5, n1 }; };
+/* Prioridades do troco (menor = melhor): 1º "peso" do que sai do caixa — qualquer moeda = 4 (poupar moedas vem antes), nota de R$ 2 = 3, nota de R$ 5 = 2; 2º total de peças devolvidas. */
+const LOWW = { 200: 3, 500: 2, 100: 4, 50: 4, 25: 4, 10: 4, 5: 4, 1: 4 };
+const sc = b => { let L = 0, p = 0, n2 = 0, n5 = 0, nc = 0; for (const [d, n] of b) { L += (LOWW[d] || 0) * n; p += n; if (d === 200) n2 = n; else if (d === 500) n5 = n; else if (d < 200) nc += n; } return { L, p, n2, n5, nc }; };
 const cmpSc = (x, y) => x.L - y.L || x.p - y.p;
 /* Melhor composição do troco (DP) pelos mesmos critérios. */
 function makeBreaker(max) {
@@ -802,7 +802,7 @@ function changeTips(T, B) {
   out = out.filter(x => !out.some(y => y !== x && cmpSc(y.s, x.s) <= 0 && y.parts.length < x.parts.length && y.parts.every(d => x.parts.includes(d))));
   out.sort((x, y) => cmpSc(x.s, y.s) || x.parts.length - y.parts.length || x.e - y.e);
   out = out.slice(0, 5);
-  out.forEach(t => { t.d = { n2: t.s.n2 - s0.n2, n5: t.s.n5 - s0.n5, n1: t.s.n1 - s0.n1, p: t.s.p - s0.p }; });
+  out.forEach(t => { t.d = { n2: t.s.n2 - s0.n2, n5: t.s.n5 - s0.n5, nc: t.s.nc - s0.nc, p: t.s.p - s0.p }; });
   return { c0, b0, s0, tips: out };
 }
 const tagTxt = (d, lbl, un, pl) => d ? `<span class="fc-tag ${d < 0 ? 'good' : 'bad'}">${d < 0 ? '−' : '+'}${Math.abs(d)} ${Math.abs(d) > 1 ? pl : un}${lbl ? ' de ' + lbl : ''}</span>` : '';
@@ -833,11 +833,11 @@ $('#fcBtn').addEventListener('click', () => {
     if (r.c0 === 0) h += `<div class="fc-empty">Valor exato: não precisa de troco.</div>`;
     else if (!tips.length) h += `<div class="fc-empty">Nenhuma opção melhora esse troco.</div>`;
     else h += `<div class="fc-list">${tips.map((t, i) => `<button type="button" class="fc-card" data-i="${i}">
-        <div class="fc-top"><span class="fc-rank${i === 0 ? ' best' : ''}">${i + 1}º</span>${i === 0 ? '<span class="fc-bestl">Melhor opção</span>' : ''}<span class="fc-tags">${tagTxt(t.d.n2, 'R$ 2', 'nota', 'notas')}${tagTxt(t.d.n5, 'R$ 5', 'nota', 'notas')}${tagTxt(t.d.n1, 'R$ 1', 'moeda', 'moedas')}${tagTxt(t.d.p, '', 'peça', 'peças')}</span></div>
+        <div class="fc-top"><span class="fc-rank${i === 0 ? ' best' : ''}">${i + 1}º</span>${i === 0 ? '<span class="fc-bestl">Melhor opção</span>' : ''}<span class="fc-tags">${tagTxt(t.d.n2, 'R$ 2', 'nota', 'notas')}${tagTxt(t.d.n5, 'R$ 5', 'nota', 'notas')}${tagTxt(t.d.nc, '', 'moeda', 'moedas')}${tagTxt(t.d.p, '', 'peça', 'peças')}</span></div>
         <div class="fc-pay"><span class="lbl">Peça a mais ao cliente</span><span class="chip-b">${brl(P / 100)}</span>${t.parts.map(d => `<span class="chip-x"><small>${denTxt(d)}</small>+ ${brl(d / 100)}</span>`).join('')}</div>
         <div class="fc-res"><span>Cliente paga <b>${brl(t.P / 100)}</b><br><span class="d">Troco: ${breakTxt(t.b)}</span></span><span class="t">${brl(t.c / 100)}</span></div>
       </button>`).join('')}</div>
-      <p class="fc-info" style="margin-top:10px">Da melhor para a menos boa: 1º poupar suas notas de R$ 2 (mais importante), de R$ 5 e moedas de R$ 1; 2º devolver menos peças. Toque em uma opção para usá-la como valor da nota.</p>`;
+      <p class="fc-info" style="margin-top:10px">Da melhor para a menos boa: 1º poupar suas moedas (mais importante), depois notas de R$ 2 e de R$ 5; 2º devolver menos peças. Toque em uma opção para usá-la como valor da nota.</p>`;
     body.innerHTML = h;
   }
   render();
